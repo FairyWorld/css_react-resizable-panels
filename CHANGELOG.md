@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.6.3
+
+- Fixed a problem with project logo not displaying correctly in the README for the Firefox browser.
+
 ## 4.6.2
 
 - [660](https://github.com/bvaughn/react-resizable-panels/pull/660): `Group` guards against layouts with mis-ordered `Panel` id keys

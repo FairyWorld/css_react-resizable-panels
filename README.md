@@ -1,4 +1,4 @@
-<img src="https://react-resizable-panels.vercel.app/og.svg" alt="react-resizable-panels logo" width="400" height="210" />
+<img src="https://react-resizable-panels.vercel.app/og.png" alt="react-resizable-panels logo" width="400" height="210" />
 
 `react-resizable-panels`: React components for resizable panel groups/layouts.
 
