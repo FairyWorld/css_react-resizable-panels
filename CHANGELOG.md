@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- [664](https://github.com/bvaughn/react-resizable-panels/pull/664): Resize actions sometimes "jump" on touch devices
+
 ## 4.6.3
 
 - Fixed a problem with project logo not displaying correctly in the README for the Firefox browser.
