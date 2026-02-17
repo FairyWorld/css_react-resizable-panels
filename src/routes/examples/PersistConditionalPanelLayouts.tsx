@@ -26,5 +26,5 @@ const { defaultLayout, onLayoutChanged } = useDefaultLayout({
       <Separator />
     </>
   )}
-  <Panel id="center">center</Panel>
+  <Panel id="right">right</Panel>
 </Group>
