@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.6.5
+
+- [670](https://github.com/bvaughn/react-resizable-panels/pull/670): Check for undefined `adoptedStyleSheets` (to better support environments like jsdom)
+- [671](https://github.com/bvaughn/react-resizable-panels/pull/671): Bug-fix: Update in-memory layout cache when group is resized by double-clicking on a separator
+
 ## 4.6.4
 
 - [664](https://github.com/bvaughn/react-resizable-panels/pull/664), [665](https://github.com/bvaughn/react-resizable-panels/pull/665): Resize actions sometimes "jump" on touch devices
