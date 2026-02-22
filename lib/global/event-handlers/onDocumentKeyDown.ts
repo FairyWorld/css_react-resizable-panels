@@ -1,7 +1,7 @@
 import { assert } from "../../utils/assert";
+import { getMountedGroupState } from "../mutable-state/groups";
 import { adjustLayoutForSeparator } from "../utils/adjustLayoutForSeparator";
 import { findSeparatorGroup } from "../utils/findSeparatorGroup";
-import { getMountedGroup } from "../utils/getMountedGroup";
 
 export function onDocumentKeyDown(event: KeyboardEvent) {
   if (event.defaultPrevented) {
@@ -64,8 +64,9 @@ export function onDocumentKeyDown(event: KeyboardEvent) {
       // If the pane is collapsed, restores the splitter to its previous position.
 
       const group = findSeparatorGroup(separatorElement);
-      const { derivedPanelConstraints, layout, separatorToPanels } =
-        getMountedGroup(group);
+
+      const groupState = getMountedGroupState(group.id, true);
+      const { derivedPanelConstraints, layout, separatorToPanels } = groupState;
 
       const separator = group.separators.find(
         (current) => current.element === separatorElement
@@ -86,7 +87,7 @@ export function onDocumentKeyDown(event: KeyboardEvent) {
 
         const nextSize =
           constraints.collapsedSize === prevSize
-            ? (group.inMemoryLastExpandedPanelSizes[primaryPanel.id] ??
+            ? (group.mutableState.expandedPanelSizes[primaryPanel.id] ??
               constraints.minSize)
             : constraints.collapsedSize;
 

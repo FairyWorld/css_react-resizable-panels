@@ -3,7 +3,14 @@
 import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { calculatePanelConstraints } from "../../global/dom/calculatePanelConstraints";
 import { mountGroup } from "../../global/mountGroup";
-import { eventEmitter, read } from "../../global/mutableState";
+import {
+  getMountedGroupState,
+  getRegisteredGroup,
+  subscribeToMountedGroup,
+  updateMountedGroup
+} from "../../global/mutable-state/groups";
+import { getInteractionState } from "../../global/mutable-state/interactions";
+import { layoutNumbersEqual } from "../../global/utils/layoutNumbersEqual";
 import { layoutsEqual } from "../../global/utils/layoutsEqual";
 import { useForceUpdate } from "../../hooks/useForceUpdate";
 import { useId } from "../../hooks/useId";
@@ -109,28 +116,24 @@ export function Group({
   // TRICKY Don't read for state; it will always lag behind by one tick
   const getPanelStyles = useStableCallback(
     (groupId: string, panelId: string) => {
-      const { interactionState, mountedGroups } = read();
-
-      for (const group of mountedGroups.keys()) {
-        if (group.id === groupId) {
-          const match = mountedGroups.get(group);
-          if (match) {
-            let dragActive = false;
-            switch (interactionState.state) {
-              case "active": {
-                dragActive = interactionState.hitRegions.some(
-                  (current) => current.group === group
-                );
-                break;
-              }
-            }
-
-            return {
-              flexGrow: match.layout[panelId] ?? 1,
-              pointerEvents: dragActive ? "none" : undefined
-            } satisfies CSSProperties;
+      const interactionState = getInteractionState();
+      const group = getRegisteredGroup(groupId);
+      const groupState = getMountedGroupState(groupId);
+      if (groupState) {
+        let dragActive = false;
+        switch (interactionState.state) {
+          case "active": {
+            dragActive = interactionState.hitRegions.some(
+              (current) => current.group === group
+            );
+            break;
           }
         }
+
+        return {
+          flexGrow: groupState.layout[panelId] ?? 1,
+          pointerEvents: dragActive ? "none" : undefined
+        } satisfies CSSProperties;
       }
 
       // This is unexpected except for the initial mount (before the group has registered with the global store)
@@ -196,14 +199,13 @@ export function Group({
           panel.panelConstraints.disabled = disabled;
         }
 
-        const { mountedGroups } = read();
-        for (const group of mountedGroups.keys()) {
-          if (group.id === id) {
-            const match = mountedGroups.get(group);
-            if (match) {
-              match.derivedPanelConstraints = calculatePanelConstraints(group);
-            }
-          }
+        const group = getRegisteredGroup(id);
+        const groupState = getMountedGroupState(id);
+        if (group && groupState) {
+          updateMountedGroup(group, {
+            ...groupState,
+            derivedPanelConstraints: calculatePanelConstraints(group)
+          });
         }
       },
       toggleSeparatorDisabled: (separatorId: string, disabled: boolean) => {
@@ -249,14 +251,15 @@ export function Group({
     }
 
     const group: RegisteredGroup = {
-      defaultLayout: preSortedDefaultLayout,
-      disableCursor: !!stableProps.disableCursor,
       disabled: !!disabled,
       element,
       id,
-      inMemoryLastExpandedPanelSizes:
-        inMemoryValuesRef.current.lastExpandedPanelSizes,
-      inMemoryLayouts: inMemoryValuesRef.current.layouts,
+      mutableState: {
+        defaultLayout: preSortedDefaultLayout,
+        disableCursor: !!stableProps.disableCursor,
+        expandedPanelSizes: inMemoryValuesRef.current.lastExpandedPanelSizes,
+        layouts: inMemoryValuesRef.current.layouts
+      },
       orientation,
       panels: inMemoryValues.panels,
       resizeTargetMinimumSize: inMemoryValues.resizeTargetMinimumSize,
@@ -267,66 +270,66 @@ export function Group({
 
     const unmountGroup = mountGroup(group);
 
-    const globalState = read();
-    const match = globalState.mountedGroups.get(group);
-    if (match) {
-      const { defaultLayoutDeferred, derivedPanelConstraints, layout } = match;
+    const { defaultLayoutDeferred, derivedPanelConstraints, layout } =
+      getMountedGroupState(group.id, true);
 
-      if (!defaultLayoutDeferred && derivedPanelConstraints.length > 0) {
-        onLayoutChangeStable(layout);
-        onLayoutChangedStable(layout);
-      }
+    if (!defaultLayoutDeferred && derivedPanelConstraints.length > 0) {
+      onLayoutChangeStable(layout);
+      onLayoutChangedStable(layout);
     }
 
-    let prevInteractionStateActive = false;
+    const removeChangeEventListener = subscribeToMountedGroup(id, (event) => {
+      const { defaultLayoutDeferred, derivedPanelConstraints, layout } =
+        event.next;
 
-    const removeInteractionStateChangeListener = eventEmitter.addListener(
-      "interactionStateChange",
-      (interactionState) => {
-        const nextInteractionStateActive = interactionState.state === "active";
-        if (prevInteractionStateActive !== nextInteractionStateActive) {
-          prevInteractionStateActive = nextInteractionStateActive;
-        }
+      if (defaultLayoutDeferred || derivedPanelConstraints.length === 0) {
+        // This indicates that the Group has not finished mounting yet
+        // Likely because it has been rendered inside of a hidden DOM subtree
+        // Ignore layouts in this case because they will not have been validated
+        return;
       }
-    );
 
-    const removeMountedGroupsChangeEventListener = eventEmitter.addListener(
-      "mountedGroupsChange",
-      (mountedGroups) => {
-        const match = mountedGroups.get(group);
-        if (match) {
-          const { defaultLayoutDeferred, derivedPanelConstraints, layout } =
-            match;
+      // Save the layout to in-memory cache so it persists when panel configuration changes
+      // This improves UX for conditionally rendered panels without requiring defaultLayout
+      const panelIdsKey = group.panels.map(({ id }) => id).join(",");
+      group.mutableState.layouts[panelIdsKey] = layout;
 
-          if (defaultLayoutDeferred || derivedPanelConstraints.length === 0) {
-            // This indicates that the Group has not finished mounting yet
-            // Likely because it has been rendered inside of a hidden DOM subtree
-            // Ignore layouts in this case because they will not have been validated
-            return;
-          }
-
-          // Save the layout to in-memory cache so it persists when panel configuration changes
-          // This improves UX for conditionally rendered panels without requiring defaultLayout
-          const panelIdsKey = group.panels.map(({ id }) => id).join(",");
-          group.inMemoryLayouts[panelIdsKey] = layout;
-
-          const { interactionState } = read();
-          const isCompleted = interactionState.state !== "active";
-
-          onLayoutChangeStable(layout);
-          if (isCompleted) {
-            onLayoutChangedStable(layout);
+      // Also check if any collapsible Panels were collapsed in this update,
+      // and record their previous sizes so we can restore them on expand
+      derivedPanelConstraints.forEach((constraints) => {
+        if (constraints.collapsible) {
+          const { layout: prevLayout } = event.prev ?? {};
+          if (prevLayout) {
+            const isCollapsed = layoutNumbersEqual(
+              constraints.collapsedSize,
+              layout[constraints.panelId]
+            );
+            const wasCollapsed = layoutNumbersEqual(
+              constraints.collapsedSize,
+              prevLayout[constraints.panelId]
+            );
+            if (isCollapsed && !wasCollapsed) {
+              group.mutableState.expandedPanelSizes[constraints.panelId] =
+                prevLayout[constraints.panelId];
+            }
           }
         }
+      });
+
+      // Lastly notify layout-change(d) handlers of the update
+      const interactionState = getInteractionState();
+      const isCompleted = interactionState.state !== "active";
+      onLayoutChangeStable(layout);
+      if (isCompleted) {
+        onLayoutChangedStable(layout);
       }
-    );
+    });
 
     return () => {
       registeredGroupRef.current = null;
 
       unmountGroup();
-      removeInteractionStateChangeListener();
-      removeMountedGroupsChangeEventListener();
+      removeChangeEventListener();
     };
   }, [
     disabled,
@@ -343,8 +346,8 @@ export function Group({
   useEffect(() => {
     const registeredGroup = registeredGroupRef.current;
     if (registeredGroup) {
-      registeredGroup.defaultLayout = defaultLayout;
-      registeredGroup.disableCursor = !!disableCursor;
+      registeredGroup.mutableState.defaultLayout = defaultLayout;
+      registeredGroup.mutableState.disableCursor = !!disableCursor;
     }
   });
 
