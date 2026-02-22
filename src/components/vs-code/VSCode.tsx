@@ -39,7 +39,7 @@ export function VSCode() {
 
   return (
     <VSCodeContext value={context}>
-      <Group className="rounded">
+      <Group className="rounded h-50!">
         <VSCodeSidebar />
         <VSCodeCollapsibleSidePanel
           onResize={(size) => {
