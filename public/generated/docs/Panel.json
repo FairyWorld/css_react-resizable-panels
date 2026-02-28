@@ -128,6 +128,27 @@
       "name": "elementRef",
       "required": false
     },
+    "groupResizeBehavior": {
+      "description": [
+        {
+          "content": "<p>How should this Panel behave if the parent Group is resized?\nDefaults to <code>preserve-relative-size</code>.</p>\n"
+        },
+        {
+          "content": "<ul>\n<li><code>preserve-relative-size</code>: Retain the current relative size (as a percentage of the Group)</li>\n<li><code>preserve-pixel-size</code>: Retain its current size (in pixels)</li>\n</ul>\n"
+        },
+        {
+          "content": "<p>Panel min/max size constraints may impact this behavior.</p>\n",
+          "intent": "primary"
+        },
+        {
+          "content": "<p>A Group must contain at least one Panel with <code>preserve-relative-size</code> resize behavior.</p>\n",
+          "intent": "warning"
+        }
+      ],
+      "html": "<div><span class=\"tok-variableName\"><span class=\"tok-propertyName\">groupResizeBehavior</span></span><span class=\"tok-operator\">?</span><span class=\"tok-punctuation\">:</span><span class=\"\"> </span><span class=\"tok-string\">\"preserve-relative-size\"</span><span class=\"\"> </span><span class=\"tok-operator\">|</span><span class=\"\"> </span><span class=\"tok-string\">\"preserve-pixel-size\"</span><span class=\"\"> </span><span class=\"tok-operator\">=</span><span class=\"\"> </span><span class=\"tok-string\">\"preserve-relative-size\"</span></div>",
+      "name": "groupResizeBehavior",
+      "required": false
+    },
     "maxSize": {
       "description": [
         {

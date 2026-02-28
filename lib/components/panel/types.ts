@@ -5,6 +5,10 @@ export type PanelSize = {
   inPixels: number;
 };
 
+export type GroupResizeBehavior =
+  | "preserve-relative-size"
+  | "preserve-pixel-size";
+
 /**
  * Numeric Panel constraints are represented as numeric percentages (0..100)
  * Values specified using other CSS units must be pre-converted.
@@ -14,6 +18,7 @@ export type PanelConstraints = {
   collapsible: boolean;
   defaultSize: number | undefined;
   disabled: boolean | undefined;
+  groupResizeBehavior?: GroupResizeBehavior | undefined;
   maxSize: number;
   minSize: number;
   panelId: string;
@@ -127,6 +132,22 @@ export type PanelProps = BasePanelAttributes & {
   elementRef?: Ref<HTMLDivElement | null> | undefined;
 
   /**
+   * How should this Panel behave if the parent Group is resized?
+   * Defaults to `preserve-relative-size`.
+   *
+   * - `preserve-relative-size`: Retain the current relative size (as a percentage of the Group)
+   * - `preserve-pixel-size`: Retain its current size (in pixels)
+   *
+   * ℹ️ Panel min/max size constraints may impact this behavior.
+   *
+   * ⚠️ A Group must contain at least one Panel with `preserve-relative-size` resize behavior.
+   */
+  groupResizeBehavior?:
+    | "preserve-relative-size"
+    | "preserve-pixel-size"
+    | undefined;
+
+  /**
    * Uniquely identifies this panel within the parent group.
    * Falls back to `useId` when not provided.
    *
@@ -204,6 +225,7 @@ export type PanelConstraintProps = Pick<
   | "collapsible"
   | "defaultSize"
   | "disabled"
+  | "groupResizeBehavior"
   | "maxSize"
   | "minSize"
 >;

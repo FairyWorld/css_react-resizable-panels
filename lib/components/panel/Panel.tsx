@@ -49,6 +49,7 @@ export function Panel({
   defaultSize,
   disabled,
   elementRef: elementRefProp,
+  groupResizeBehavior = "preserve-relative-size",
   id: idProp,
   maxSize = "100%",
   minSize = "0%",
@@ -102,6 +103,7 @@ export function Panel({
         },
         onResize: hasOnResize ? onResizeStable : undefined,
         panelConstraints: {
+          groupResizeBehavior,
           collapsedSize,
           collapsible,
           defaultSize,
@@ -114,6 +116,7 @@ export function Panel({
       return registerPanel(registeredPanel);
     }
   }, [
+    groupResizeBehavior,
     collapsedSize,
     collapsible,
     defaultSize,

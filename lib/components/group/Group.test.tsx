@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   createRef,
@@ -214,6 +214,128 @@ describe("Group", () => {
           right: 65
         }
       );
+    });
+  });
+
+  describe("groupResizeBehavior", () => {
+    function mockElementBounds({
+      groupSize,
+      leftPanelSize,
+      rightPanelSize
+    }: {
+      groupSize: number;
+      leftPanelSize: number;
+      rightPanelSize: number;
+    }) {
+      setElementBoundsFunction((element: HTMLElement) => {
+        switch (element.id) {
+          case "group": {
+            return new DOMRect(0, 0, groupSize, 50);
+          }
+          case "left": {
+            return new DOMRect(0, 0, leftPanelSize, 50);
+          }
+          case "right": {
+            return new DOMRect(leftPanelSize, 0, rightPanelSize, 50);
+          }
+        }
+      });
+    }
+
+    test("preserve-relative-size preserves relative (percentage based) size Group size changes", async () => {
+      mockElementBounds({
+        groupSize: 1,
+        leftPanelSize: 1,
+        rightPanelSize: 1
+      });
+
+      const groupRef = createRef<GroupImperativeHandle | null>();
+      const onLayoutChanged = vi.fn();
+
+      render(
+        <Group groupRef={groupRef} onLayoutChanged={onLayoutChanged}>
+          <Panel
+            defaultSize="25%"
+            groupResizeBehavior="preserve-relative-size"
+            id="left"
+          />
+          <Panel id="right" />
+        </Group>
+      );
+
+      expect(onLayoutChanged).toBeCalledTimes(1);
+      expect(onLayoutChanged).toHaveBeenLastCalledWith({
+        left: 25,
+        right: 75
+      });
+      expect(groupRef.current?.getLayout()).toEqual({
+        left: 25,
+        right: 75
+      });
+
+      await act(() => {
+        mockElementBounds({
+          groupSize: 2,
+          leftPanelSize: 1,
+          rightPanelSize: 1
+        });
+      });
+
+      expect(groupRef.current?.getLayout()).toEqual({
+        left: 25,
+        right: 75
+      });
+      expect(onLayoutChanged).toBeCalledTimes(1);
+    });
+
+    test("preserve-pixel-size preserves pixel size Group size changes", async () => {
+      mockElementBounds({
+        groupSize: 800,
+        leftPanelSize: 200,
+        rightPanelSize: 600
+      });
+
+      const groupRef = createRef<GroupImperativeHandle | null>();
+      const onLayoutChanged = vi.fn();
+
+      render(
+        <Group groupRef={groupRef} onLayoutChanged={onLayoutChanged}>
+          <Panel
+            defaultSize="25%"
+            groupResizeBehavior="preserve-pixel-size"
+            id="left"
+          />
+          <Panel id="right" />
+        </Group>
+      );
+
+      expect(onLayoutChanged).toBeCalledTimes(1);
+      expect(onLayoutChanged).toHaveBeenLastCalledWith({
+        left: 25,
+        right: 75
+      });
+      expect(groupRef.current?.getLayout()).toEqual({
+        left: 25,
+        right: 75
+      });
+
+      await act(() => {
+        mockElementBounds({
+          groupSize: 1000,
+          leftPanelSize: 200,
+          rightPanelSize: 800
+        });
+      });
+
+      expect(onLayoutChanged).toBeCalledTimes(2);
+      expect(onLayoutChanged).toHaveBeenLastCalledWith({
+        left: 20,
+        right: 80
+      });
+      expect(groupRef.current?.getLayout()).toEqual({
+        left: 20,
+        right: 80
+      });
     });
   });
 

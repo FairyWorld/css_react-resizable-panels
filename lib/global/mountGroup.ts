@@ -20,6 +20,7 @@ import { calculateDefaultLayout } from "./utils/calculateDefaultLayout";
 import { layoutsEqual } from "./utils/layoutsEqual";
 import { notifyPanelOnResize } from "./utils/notifyPanelOnResize";
 import { objectsEqual } from "./utils/objectsEqual";
+import { preserveFixedPanelSizes } from "./utils/preserveFixedPanelSizes";
 import { validateLayoutKeys } from "./utils/validateLayoutKeys";
 import { validatePanelGroupLayout } from "./utils/validatePanelGroupLayout";
 
@@ -61,22 +62,29 @@ export function mountGroup(group: RegisteredGroup) {
           // Update non-percentage based constraints
           const nextDerivedPanelConstraints = calculatePanelConstraints(group);
 
-          // Revalidate layout in case constraints have changed
+          // Revalidate layout in case constraints have changed or group size changed
           const prevLayout = groupState.defaultLayoutDeferred
             ? calculateDefaultLayout(nextDerivedPanelConstraints)
             : groupState.layout;
+          const unsafeLayout = preserveFixedPanelSizes({
+            group,
+            nextGroupSize: groupSize,
+            prevGroupSize: groupState.groupSize,
+            prevLayout
+          });
           const nextLayout = validatePanelGroupLayout({
-            layout: prevLayout,
+            layout: unsafeLayout,
             panelConstraints: nextDerivedPanelConstraints
           });
 
           if (
             !groupState.defaultLayoutDeferred &&
-            layoutsEqual(prevLayout, nextLayout) &&
+            layoutsEqual(groupState.layout, nextLayout) &&
             objectsEqual(
               groupState.derivedPanelConstraints,
               nextDerivedPanelConstraints
-            )
+            ) &&
+            groupState.groupSize === groupSize
           ) {
             return;
           }
@@ -84,6 +92,7 @@ export function mountGroup(group: RegisteredGroup) {
           updateMountedGroup(group, {
             defaultLayoutDeferred: false,
             derivedPanelConstraints: nextDerivedPanelConstraints,
+            groupSize,
             layout: nextLayout,
             separatorToPanels: groupState.separatorToPanels
           });
@@ -152,6 +161,7 @@ export function mountGroup(group: RegisteredGroup) {
   updateMountedGroup(group, {
     defaultLayoutDeferred: groupSize === 0,
     derivedPanelConstraints,
+    groupSize,
     layout: defaultLayoutSafe,
     separatorToPanels
   });
